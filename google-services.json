@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "142098117036",
+    "project_id": "student-mate-bcaeb",
+    "storage_bucket": "student-mate-bcaeb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:142098117036:android:ac9bb683fa151b6f76ca09",
+        "android_client_info": {
+          "package_name": "com.company.studentmate"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBkKczHkZboh3_mg6C7_Nr4wF3sV0Tf7fk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
