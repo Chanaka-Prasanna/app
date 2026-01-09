@@ -1,9 +1,10 @@
 import { Colors } from '@/constants/theme';
+import { usePDFStore } from '@/hooks/store';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
 import {
   Platform,
   SafeAreaView,
@@ -27,12 +28,20 @@ type ContentType = 'question-packs' | 'summary' | 'flash-cards' | 'short-notes' 
 export default function SubjectDetailScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const { subjectName } = useLocalSearchParams();
-  const [selectedPDF, setSelectedPDF] = useState<PDF | null>(null);
-  const [selectedContent, setSelectedContent] = useState<ContentType>(null);
+  const { subjectName, subjectId } = useLocalSearchParams();
+  
+  // Zustand store
+  const { selectedPDF, selectedContent, setSelectedPDF, setSelectedContent, resetSelection } = usePDFStore();
   
   // Use the subject name from params or default
   const displayName = (subjectName as string) || 'Organic Chemistry';
+  
+  // Reset selection when component unmounts
+  useEffect(() => {
+    return () => {
+      resetSelection();
+    };
+  }, [resetSelection]);
   
   // Mock PDFs data - in real app this would be fetched based on subjectId
   const pdfs: PDF[] = [
@@ -68,7 +77,6 @@ export default function SubjectDetailScreen() {
 
   const handlePDFPress = (pdf: PDF) => {
     setSelectedPDF(pdf);
-    setSelectedContent(null);
   };
 
   const handleBack = () => {

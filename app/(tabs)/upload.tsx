@@ -1,12 +1,13 @@
 import { Colors } from '@/constants/theme';
 import { storage } from '@/firebase';
+import { useSubjectStore } from '@/hooks/store';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { URLS } from '@/utils/urls';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import { StatusBar } from 'expo-status-bar';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -28,48 +29,53 @@ interface Upload {
   subjectId: string;
 }
 
-interface Subject {
-  id: string;
-  name: string;
-  createdAt: string;
-}
-
 export default function UploadScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  
+  // Zustand store
+  const { subjects, loadSubjects, createSubject } = useSubjectStore();
+  
   const [recentUploads, setRecentUploads] = useState<Upload[]>([]);
-  const [subjects, setSubjects] = useState<Subject[]>([
-    {
-      id: '1',
-      name: 'Organic Chemistry',
-      createdAt: new Date().toISOString(),
-    },
-  ]);
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [newSubjectName, setNewSubjectName] = useState('');
   const [showNewSubjectInput, setShowNewSubjectInput] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [creatingSubject, setCreatingSubject] = useState(false);
 
-  const createSubject = () => {
+  // Load subjects on mount
+  useEffect(() => {
+    loadSubjects();
+  }, [loadSubjects]);
+
+  const handleCreateSubject = async () => {
     if (!newSubjectName.trim()) {
       Alert.alert('Error', 'Please enter a subject name');
       return;
     }
 
-    const newSubject: Subject = {
-      id: Date.now().toString(),
-      name: newSubjectName.trim(),
-      createdAt: new Date().toISOString(),
-    };
-
-    setSubjects([newSubject, ...subjects]);
-    setSelectedSubject(newSubject.id);
-    setNewSubjectName('');
-    setShowNewSubjectInput(false);
-    setShowDropdown(false);
-    Alert.alert('Success', `Subject "${newSubject.name}" created!`);
+    try {
+      setCreatingSubject(true);
+      await createSubject(newSubjectName.trim());
+      
+      // Select the newly created subject
+      const newSubjects = await loadSubjects();
+      if (subjects.length > 0) {
+        setSelectedSubject(subjects[0].id);
+      }
+      
+      setNewSubjectName('');
+      setShowNewSubjectInput(false);
+      setShowDropdown(false);
+      Alert.alert('Success', `Subject created!`);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to create subject');
+      console.error(error);
+    } finally {
+      setCreatingSubject(false);
+    }
   };
 
   const uploadToFirebase = async () => {
@@ -355,9 +361,14 @@ export default function UploadScreen() {
               />
               <TouchableOpacity
                 style={styles.createSubjectButton}
-                onPress={createSubject}
+                onPress={handleCreateSubject}
+                disabled={creatingSubject}
               >
-                <Text style={styles.createSubjectText}>Create</Text>
+                {creatingSubject ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.createSubjectText}>Create</Text>
+                )}
               </TouchableOpacity>
             </View>
           )}
