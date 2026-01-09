@@ -37,8 +37,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <MaterialIcons name="home" size={28} color={color} />,
+          title: 'Subjects',
+          tabBarIcon: ({ color }) => <MaterialIcons name="school" size={28} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -46,13 +46,6 @@ export default function TabLayout() {
         options={{
           title: 'Upload',
           tabBarIcon: ({ color }) => <MaterialIcons name="cloud-upload" size={28} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="progress"
-        options={{
-          title: 'Progress',
-          tabBarIcon: ({ color }) => <MaterialIcons name="show-chart" size={28} color={color} />,
         }}
       />
       <Tabs.Screen

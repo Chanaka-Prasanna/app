@@ -15,8 +15,9 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 
 interface Upload {
@@ -24,24 +25,61 @@ interface Upload {
   name: string;
   uploadedAt: string;
   downloadUrl?: string;
+  subjectId: string;
+}
+
+interface Subject {
+  id: string;
+  name: string;
+  createdAt: string;
 }
 
 export default function UploadScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const [recentUploads, setRecentUploads] = useState<Upload[]>([
+  const [recentUploads, setRecentUploads] = useState<Upload[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([
     {
       id: '1',
-      name: 'Organic Chemistry Ch5.pdf',
-      uploadedAt: '2 hours ago',
+      name: 'Organic Chemistry',
+      createdAt: new Date().toISOString(),
     },
   ]);
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
+  const [selectedSubject, setSelectedSubject] = useState<string>('');
+  const [newSubjectName, setNewSubjectName] = useState('');
+  const [showNewSubjectInput, setShowNewSubjectInput] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  const createSubject = () => {
+    if (!newSubjectName.trim()) {
+      Alert.alert('Error', 'Please enter a subject name');
+      return;
+    }
+
+    const newSubject: Subject = {
+      id: Date.now().toString(),
+      name: newSubjectName.trim(),
+      createdAt: new Date().toISOString(),
+    };
+
+    setSubjects([newSubject, ...subjects]);
+    setSelectedSubject(newSubject.id);
+    setNewSubjectName('');
+    setShowNewSubjectInput(false);
+    setShowDropdown(false);
+    Alert.alert('Success', `Subject "${newSubject.name}" created!`);
+  };
 
   const uploadToFirebase = async () => {
     if (!selectedFile) {
       console.log('No file selected');
+      return;
+    }
+
+    if (!selectedSubject) {
+      Alert.alert('Error', 'Please select a subject first');
       return;
     }
 
@@ -129,6 +167,7 @@ export default function UploadScreen() {
         name: selectedFile.name,
         uploadedAt: 'Just now',
         downloadUrl: downloadUrl,
+        subjectId: selectedSubject,
       };
       
       setRecentUploads([newUpload, ...recentUploads]);
@@ -187,7 +226,7 @@ export default function UploadScreen() {
     try {
       console.log('Opening document picker...');
       const result = await DocumentPicker.getDocumentAsync({
-        type: ['application/pdf', 'image/*', 'text/plain'],
+        type: 'application/pdf',
         copyToCacheDirectory: true,
       });
 
@@ -230,27 +269,122 @@ export default function UploadScreen() {
         <View style={styles.header}>
           <Text style={styles.title}>Upload Your Notes</Text>
           <Text style={styles.subtitle}>
-            AI will generate questions automatically
+            Select a subject and upload PDF files
           </Text>
+        </View>
+
+        {/* Subject Selection */}
+        <View style={styles.subjectSection}>
+          <Text style={styles.sectionTitle}>Select Subject</Text>
+          
+          {/* Subject Dropdown */}
+          <TouchableOpacity
+            style={styles.dropdown}
+            onPress={() => setShowDropdown(!showDropdown)}
+          >
+            <View style={styles.dropdownContent}>
+              <MaterialIcons name="folder" size={20} color={colors.primary} />
+              <Text style={[styles.dropdownText, !selectedSubject && styles.dropdownPlaceholder]}>
+                {selectedSubject 
+                  ? subjects.find(s => s.id === selectedSubject)?.name 
+                  : 'Choose a subject...'}
+              </Text>
+            </View>
+            <MaterialIcons 
+              name={showDropdown ? "keyboard-arrow-up" : "keyboard-arrow-down"} 
+              size={24} 
+              color={colors.textSecondary} 
+            />
+          </TouchableOpacity>
+
+          {/* Dropdown Menu */}
+          {showDropdown && (
+            <View style={styles.dropdownMenu}>
+              <ScrollView 
+                style={styles.dropdownScroll}
+                nestedScrollEnabled
+              >
+                {subjects.map((subject) => (
+                  <TouchableOpacity
+                    key={subject.id}
+                    style={[
+                      styles.dropdownItem,
+                      selectedSubject === subject.id && styles.dropdownItemSelected,
+                    ]}
+                    onPress={() => {
+                      setSelectedSubject(subject.id);
+                      setShowDropdown(false);
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.dropdownItemText,
+                        selectedSubject === subject.id && styles.dropdownItemTextSelected,
+                      ]}
+                    >
+                      {subject.name}
+                    </Text>
+                    {selectedSubject === subject.id && (
+                      <MaterialIcons name="check" size={20} color={colors.primary} />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
+          {/* Add New Subject Button */}
+          <TouchableOpacity
+            style={styles.addSubjectButton}
+            onPress={() => setShowNewSubjectInput(!showNewSubjectInput)}
+          >
+            <MaterialIcons name="add-circle" size={24} color={colors.primary} />
+            <Text style={styles.addSubjectButtonText}>Create New Subject</Text>
+          </TouchableOpacity>
+
+          {/* New Subject Input */}
+          {showNewSubjectInput && (
+            <View style={styles.newSubjectContainer}>
+              <TextInput
+                style={styles.newSubjectInput}
+                placeholder="Enter subject name"
+                placeholderTextColor={colors.textSecondary}
+                value={newSubjectName}
+                onChangeText={setNewSubjectName}
+                autoFocus
+              />
+              <TouchableOpacity
+                style={styles.createSubjectButton}
+                onPress={createSubject}
+              >
+                <Text style={styles.createSubjectText}>Create</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         {/* Upload Area */}
         <TouchableOpacity
-          style={styles.uploadArea}
+          style={[
+            styles.uploadArea,
+            !selectedSubject && styles.uploadAreaDisabled,
+          ]}
           onPress={pickDocument}
           activeOpacity={0.7}
-          disabled={uploading}
+          disabled={uploading || !selectedSubject}
         >
           <View style={styles.uploadIconContainer}>
             <MaterialIcons
-              name="description"
+              name="picture-as-pdf"
               size={48}
               color={colors.iconOnPrimary}
             />
           </View>
-          <Text style={styles.uploadText}>Tap to Select</Text>
+          <Text style={styles.uploadText}>
+            {selectedSubject ? 'Tap to Select PDF' : 'Select a Subject First'}
+          </Text>
           <Text style={styles.uploadSubtext}>
-            PDF, Images, or Text Files
+            PDF files only
           </Text>
         </TouchableOpacity>
 
@@ -300,7 +434,7 @@ export default function UploadScreen() {
                     color={colors.iconOnPrimary}
                   />
                   <Text style={styles.uploadButtonText}>
-                    Upload and Summarize
+                    Upload PDF
                   </Text>
                 </>
               )}
@@ -340,6 +474,7 @@ const createStyles = (colors: typeof Colors.light) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+    paddingTop: Platform.OS === 'android' ? 40 : 0,
   },
   safeArea: {
     flex: 1,
@@ -537,5 +672,143 @@ const createStyles = (colors: typeof Colors.light) => StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: colors.iconOnPrimary,
+  },
+  subjectSection: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 12,
+  },
+  dropdown: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.card,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.borderDashed,
+    marginBottom: 12,
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.cardShadow,
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.5,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  dropdownContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  dropdownText: {
+    fontSize: 16,
+    color: colors.text,
+    fontWeight: '500',
+  },
+  dropdownPlaceholder: {
+    color: colors.textSecondary,
+    fontWeight: '400',
+  },
+  dropdownMenu: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: colors.borderDashed,
+    maxHeight: 200,
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.cardShadow,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 1,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  dropdownScroll: {
+    maxHeight: 200,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.backgroundSecondary,
+  },
+  dropdownItemSelected: {
+    backgroundColor: colors.backgroundSecondary,
+  },
+  dropdownItemText: {
+    fontSize: 15,
+    color: colors.text,
+  },
+  dropdownItemTextSelected: {
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  addSubjectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.backgroundSecondary,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    gap: 8,
+    borderWidth: 2,
+    borderColor: colors.primary,
+    borderStyle: 'dashed',
+  },
+  addSubjectButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  newSubjectContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  newSubjectInput: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: colors.card,
+    borderRadius: 8,
+    fontSize: 14,
+    color: colors.text,
+    borderWidth: 1,
+    borderColor: colors.borderDashed,
+  },
+  createSubjectButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+    justifyContent: 'center',
+  },
+  createSubjectText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.iconOnPrimary,
+  },
+  uploadAreaDisabled: {
+    opacity: 0.5,
   },
 });
