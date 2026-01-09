@@ -42,17 +42,16 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="upload"
-        options={{
-          title: 'Upload',
-          tabBarIcon: ({ color }) => <MaterialIcons name="cloud-upload" size={28} color={color} />,
-        }}
-      />
-      <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',
           tabBarIcon: ({ color }) => <MaterialIcons name="settings" size={28} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="upload"
+        options={{
+          href: null, // Hide from tabs
         }}
       />
       <Tabs.Screen

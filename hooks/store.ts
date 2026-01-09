@@ -1,4 +1,5 @@
-import { Subject, createSubject as createSubjectDB, deleteSubject as deleteSubjectDB, getAllSubjects } from '@/utils/subjectDB';
+import { DOC, createDoc as createDocDB, deleteDoc as deleteDocDB, getAllDocs, getDocsBySubject } from '@/utils/docs-db';
+import { Subject, createSubject as createSubjectDB, deleteSubject as deleteSubjectDB, getAllSubjects } from '@/utils/subject-db';
 import { create } from 'zustand';
 
 interface SubjectStore {
@@ -75,43 +76,91 @@ export const useSubjectStore = create<SubjectStore>((set, get) => ({
   },
 }));
 
-// PDF Store
-interface PDF {
-  id: string;
-  name: string;
-  uploadedAt: string;
-  size: string;
-  pages: number;
-  url: string;
-}
-
+// Docs Store
 type ContentType = 'question-packs' | 'summary' | 'flash-cards' | 'short-notes' | 'mind-map' | null;
 
-interface PDFStore {
-  pdfs: PDF[];
-  selectedPDF: PDF | null;
+interface DocsStore {
+  docs: DOC[];
+  selectedDoc: DOC | null;
   selectedContent: ContentType;
   loading: boolean;
+  error: string | null;
   
   // Actions
-  setPDFs: (pdfs: PDF[]) => void;
-  setSelectedPDF: (pdf: PDF | null) => void;
+  loadDocs: () => Promise<void>;
+  loadDocsBySubject: (subjectId: string) => Promise<void>;
+  createDoc: (name: string, url: string, size: string, pages: number, subjectId: string) => Promise<DOC>;
+  deleteDoc: (id: string) => Promise<void>;
+  setSelectedDoc: (doc: DOC | null) => void;
   setSelectedContent: (content: ContentType) => void;
   resetSelection: () => void;
+  clearError: () => void;
 }
 
-export const usePDFStore = create<PDFStore>((set) => ({
-  pdfs: [],
-  selectedPDF: null,
+export const useDocsStore = create<DocsStore>((set, get) => ({
+  docs: [],
+  selectedDoc: null,
   selectedContent: null,
   loading: false,
+  error: null,
 
-  setPDFs: (pdfs: PDF[]) => {
-    set({ pdfs });
+  loadDocs: async () => {
+    set({ loading: true, error: null });
+    try {
+      const docs = await getAllDocs();
+      set({ docs, loading: false });
+    } catch (error) {
+      set({ 
+        error: error instanceof Error ? error.message : 'Failed to load documents',
+        loading: false 
+      });
+    }
   },
 
-  setSelectedPDF: (pdf: PDF | null) => {
-    set({ selectedPDF: pdf, selectedContent: null });
+  loadDocsBySubject: async (subjectId: string) => {
+    set({ loading: true, error: null });
+    try {
+      const docs = await getDocsBySubject(subjectId);
+      set({ docs, loading: false });
+    } catch (error) {
+      set({ 
+        error: error instanceof Error ? error.message : 'Failed to load documents',
+        loading: false 
+      });
+    }
+  },
+
+  createDoc: async (name: string, url: string, size: string, pages: number, subjectId: string) => {
+    set({ loading: true, error: null });
+    try {
+      const newDoc = await createDocDB(name, url, size, pages, subjectId);
+      await get().loadDocs();
+      return newDoc;
+    } catch (error) {
+      set({ 
+        error: error instanceof Error ? error.message : 'Failed to create document',
+        loading: false 
+      });
+      throw error;
+    }
+  },
+
+  deleteDoc: async (id: string) => {
+    set({ loading: true, error: null });
+    try {
+      await deleteDocDB(id);
+      await get().loadDocs();
+    } catch (error) {
+      set({ 
+        error: error instanceof Error ? error.message : 'Failed to delete document',
+        loading: false 
+      });
+      throw error;
+    }
+  },
+
+  setSelectedDoc: (doc: DOC | null) => {
+    set({ selectedDoc: doc, selectedContent: null });
   },
 
   setSelectedContent: (content: ContentType) => {
@@ -119,6 +168,13 @@ export const usePDFStore = create<PDFStore>((set) => ({
   },
 
   resetSelection: () => {
-    set({ selectedPDF: null, selectedContent: null });
+    set({ selectedDoc: null, selectedContent: null });
+  },
+
+  clearError: () => {
+    set({ error: null });
   },
 }));
+
+// PDF Store - backward compatibility wrapper around DocsStore
+export const usePDFStore = useDocsStore;
